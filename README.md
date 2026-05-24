@@ -14,4 +14,4 @@ AI-powered fraud detection dashboard using:
 - Fraud visualization
 
 ## Live Demo
-(Add Streamlit URL here after deployment)
+https://fraud-detection-dashboard-6n11.streamlit.app/
