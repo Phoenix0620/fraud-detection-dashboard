@@ -4,7 +4,6 @@ import numpy as np
 import pickle
 import plotly.express as px
 from pathlib import Path
-from PIL import Image
 
 # ---------------------------------------------------
 # PAGE CONFIG
@@ -17,7 +16,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------
-# HIDE STREAMLIT TOP BAR / DEPLOY BAR
+# HIDE STREAMLIT TOP BAR / FOOTER
 # ---------------------------------------------------
 
 st.markdown(
@@ -28,10 +27,12 @@ st.markdown(
         header {visibility: hidden;}
         [data-testid="stToolbar"] {visibility: hidden; height: 0px;}
         [data-testid="stDecoration"] {visibility: hidden; height: 0px;}
+
         .stApp {
             background: linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
             color: #f8fafc;
         }
+
         .main-title {
             font-size: 3rem;
             font-weight: 800;
@@ -39,11 +40,13 @@ st.markdown(
             letter-spacing: -1px;
             color: #f8fafc;
         }
+
         .subtitle {
             font-size: 1rem;
             color: #cbd5e1;
             margin-bottom: 1.5rem;
         }
+
         .hero-card {
             background: linear-gradient(135deg, rgba(37,99,235,0.22), rgba(14,165,233,0.10));
             border: 1px solid rgba(148,163,184,0.18);
@@ -52,6 +55,7 @@ st.markdown(
             box-shadow: 0 8px 30px rgba(0,0,0,0.18);
             margin-bottom: 1rem;
         }
+
         .stat-card {
             background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(148,163,184,0.18);
@@ -60,22 +64,26 @@ st.markdown(
             box-shadow: 0 6px 20px rgba(0,0,0,0.12);
             height: 100%;
         }
+
         .stat-label {
             font-size: 0.85rem;
             color: #94a3b8;
             margin-bottom: 0.25rem;
         }
+
         .stat-value {
             font-size: 1.65rem;
             font-weight: 800;
             color: #f8fafc;
             line-height: 1.1;
         }
+
         .stat-note {
             font-size: 0.78rem;
             color: #cbd5e1;
             margin-top: 0.25rem;
         }
+
         .section-card {
             background: rgba(15, 23, 42, 0.88);
             border: 1px solid rgba(148,163,184,0.16);
@@ -84,6 +92,7 @@ st.markdown(
             margin-bottom: 1rem;
             box-shadow: 0 6px 24px rgba(0,0,0,0.14);
         }
+
         .small-badge {
             display: inline-block;
             padding: 0.35rem 0.7rem;
@@ -94,6 +103,7 @@ st.markdown(
             border: 1px solid rgba(59,130,246,0.25);
             margin-right: 0.4rem;
         }
+
         .hint-box {
             background: rgba(30,41,59,0.9);
             border: 1px solid rgba(148,163,184,0.16);
@@ -101,10 +111,12 @@ st.markdown(
             padding: 0.9rem 1rem;
             color: #e2e8f0;
         }
+
         .stDataFrame {
             border-radius: 14px;
             overflow: hidden;
         }
+
         .block-container {
             padding-top: 1.2rem;
             padding-bottom: 2rem;
@@ -119,12 +131,40 @@ st.markdown(
 # ---------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DASHBOARD_DIR = BASE_DIR / "dashboard"
 
-MODEL_PATH = DASHBOARD_DIR / "model.pkl"
-SCALER_PATH = DASHBOARD_DIR / "scaler.pkl"
-FEATURES_PATH = DASHBOARD_DIR / "feature_columns.pkl"
-DATA_PATH = DASHBOARD_DIR / "dashboard_data.csv"
+MODEL_PATHS = [
+    BASE_DIR / "Dashboard" / "model.pkl",
+    BASE_DIR / "dashboard" / "model.pkl",
+    BASE_DIR / "model.pkl",
+]
+
+SCALER_PATHS = [
+    BASE_DIR / "Dashboard" / "scaler.pkl",
+    BASE_DIR / "dashboard" / "scaler.pkl",
+    BASE_DIR / "scaler.pkl",
+]
+
+FEATURE_PATHS = [
+    BASE_DIR / "Dashboard" / "feature_columns.pkl",
+    BASE_DIR / "dashboard" / "feature_columns.pkl",
+    BASE_DIR / "feature_columns.pkl",
+]
+
+DATA_PATHS = [
+    BASE_DIR / "Dashboard" / "dashboard_data.csv",
+    BASE_DIR / "dashboard" / "dashboard_data.csv",
+    BASE_DIR / "dashboard_data.csv",
+]
+
+# ---------------------------------------------------
+# LOAD FILE HELPER
+# ---------------------------------------------------
+
+def first_existing_path(paths):
+    for p in paths:
+        if p.exists():
+            return p
+    return None
 
 # ---------------------------------------------------
 # LOAD DATA
@@ -132,7 +172,13 @@ DATA_PATH = DASHBOARD_DIR / "dashboard_data.csv"
 
 @st.cache_data
 def load_data():
-    return pd.read_csv(DATA_PATH)
+    data_path = first_existing_path(DATA_PATHS)
+    if data_path is None:
+        st.error(
+            "dashboard_data.csv not found. Put it in Dashboard/, dashboard/, or the repo root."
+        )
+        st.stop()
+    return pd.read_csv(data_path)
 
 # ---------------------------------------------------
 # LOAD ARTIFACTS
@@ -142,13 +188,29 @@ def load_data():
 def load_artifacts():
     artifacts = {}
 
-    with open(MODEL_PATH, "rb") as f:
+    model_path = first_existing_path(MODEL_PATHS)
+    scaler_path = first_existing_path(SCALER_PATHS)
+    feature_path = first_existing_path(FEATURE_PATHS)
+
+    if model_path is None:
+        st.error("model.pkl not found.")
+        st.stop()
+
+    if scaler_path is None:
+        st.error("scaler.pkl not found.")
+        st.stop()
+
+    if feature_path is None:
+        st.error("feature_columns.pkl not found.")
+        st.stop()
+
+    with open(model_path, "rb") as f:
         artifacts["model"] = pickle.load(f)
 
-    with open(SCALER_PATH, "rb") as f:
+    with open(scaler_path, "rb") as f:
         artifacts["scaler"] = pickle.load(f)
 
-    with open(FEATURES_PATH, "rb") as f:
+    with open(feature_path, "rb") as f:
         artifacts["feature_columns"] = pickle.load(f)
 
     return artifacts
@@ -201,7 +263,7 @@ st.markdown(
 )
 
 if model is None:
-    st.error("Model file not found. Save `dashboard/model.pkl` first.")
+    st.error("Model file not found.")
     st.stop()
 
 # ---------------------------------------------------
@@ -368,7 +430,10 @@ elif page == "Transaction Explorer":
     st.markdown("### Transaction Explorer")
 
     cols_for_view = [
-        c for c in ["TransactionID", "TransactionAmt", "FraudProbability", "RiskTier", "TrueLabel", "HourOfDay", "DeviceType"]
+        c for c in [
+            "TransactionID", "TransactionAmt", "FraudProbability",
+            "RiskTier", "TrueLabel", "HourOfDay", "DeviceType"
+        ]
         if c in df.columns
     ]
 
@@ -406,9 +471,9 @@ elif page == "Transaction Explorer":
                     st.warning("TransactionID not found.")
                 else:
                     st.dataframe(result, use_container_width=True)
-                    prob = float(result["FraudProbability"].iloc[0]) if "FraudProbability" in result.columns else np.nan
 
-                    if pd.notna(prob):
+                    if "FraudProbability" in result.columns:
+                        prob = float(result["FraudProbability"].iloc[0])
                         st.metric("Fraud Probability", f"{prob:.3f}")
                         st.metric("Risk Tier", make_risk_tier(prob))
 
@@ -489,22 +554,6 @@ elif page == "SHAP Explainer":
                     """,
                     unsafe_allow_html=True,
                 )
-
-                waterfall_candidates = [
-                    DASHBOARD_DIR / f"shap_{search_id}.png",
-                    DASHBOARD_DIR / "shap_waterfall.png",
-                    DASHBOARD_DIR / "shap_summary.png",
-                ]
-
-                for img_path in waterfall_candidates:
-                    if img_path.exists():
-                        st.subheader("SHAP Waterfall Plot")
-                        st.image(Image.open(img_path), use_container_width=True)
-                        break
-                else:
-                    st.info(
-                        "Save a SHAP waterfall image in the dashboard folder to display it here. The notebook phase already handles the detailed SHAP analysis."
-                    )
     else:
         st.info("FraudProbability or TransactionID is not available in dashboard data.")
 
